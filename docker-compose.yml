@@ -1,0 +1,39 @@
+# Usage : JWT_SECRET=$(openssl rand -hex 32) docker compose up --build
+# Premier compte : docker compose run --rm auth python -m scripts.create_admin admin@ecole.fr Prénom Nom
+x-common: &common
+  build: .
+  restart: unless-stopped
+  environment: &env
+    JWT_SECRET: ${JWT_SECRET:?définir JWT_SECRET (openssl rand -hex 32)}
+    TZ: Europe/Paris
+    DATA_DIR: /data
+    AUTH_URL: http://auth:4001
+    PLANNING_URL: http://planning:4002
+    ATTENDANCE_URL: http://attendance:4003
+
+services:
+  auth:
+    <<: *common
+    command: ["python", "-m", "services.auth"]
+    volumes: ["auth-data:/data"]
+  planning:
+    <<: *common
+    command: ["python", "-m", "services.planning"]
+    volumes: ["planning-data:/data"]
+  attendance:
+    <<: *common
+    command: ["python", "-m", "services.attendance"]
+    volumes: ["attendance-data:/data"]
+  gateway:
+    <<: *common
+    command: ["python", "-m", "services.gateway"]
+    environment:
+      <<: *env
+      COOKIE_SECURE: ${COOKIE_SECURE:-0}   # mettre 1 derrière HTTPS
+    ports: ["3000:3000"]
+    depends_on: [auth, planning, attendance]
+
+volumes:
+  auth-data:
+  planning-data:
+  attendance-data:
